@@ -1,82 +1,68 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Package } from "lucide-react";
+import { Package, Info, ShieldCheck, Activity, Sparkles } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/dashboard");
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/dashboard");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: {
-            full_name: fullName,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Cadastro realizado!",
-        description: "Você já pode fazer login.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro no cadastro",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    // Verificar se já está logado
+    const session = localStorage.getItem("session");
+    if (session) {
+      navigate("/dashboard");
     }
-  };
+  }, [navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Simular delay de autenticação
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verificar credenciais (usuários pré-definidos)
+      const users = [
+        { id: "1", username: "admin", password: "teste123", full_name: "Administrador do Sistema", role: "admin" },
+        { id: "2", username: "gestor", password: "teste123", full_name: "Gestor de Estoque", role: "gestor" }
+      ];
+
+      const user = users.find(u => u.username === username && u.password === password);
+
+      if (!user) {
+        throw new Error("Usuário ou senha inválidos");
+      }
+
+      // Criar sessão
+      const session = {
+        access_token: `mock-token-${user.id}`,
+        user: {
+          id: user.id,
+          username: user.username,
+          full_name: user.full_name,
+          role: user.role,
+        }
+      };
+
+      localStorage.setItem("session", JSON.stringify(session));
+      localStorage.setItem("user", JSON.stringify(session.user));
+
+      toast({
+        title: "Login realizado!",
+        description: `Bem-vindo, ${user.full_name}`,
       });
 
-      if (error) throw error;
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Erro no login",
@@ -89,98 +75,102 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
-              <Package className="h-6 w-6 text-primary-foreground" />
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-accent/10 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,hsla(var(--primary),0.12),transparent_25%),radial-gradient(circle_at_80%_10%,hsla(var(--accent),0.12),transparent_28%)]" />
+      <div className="relative max-w-6xl mx-auto px-4 py-10">
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-semibold uppercase tracking-[0.2em]">
+              <Sparkles className="h-4 w-4" />
+              Nova experiência
+            </div>
+            <h1 className="text-4xl lg:text-5xl font-semibold leading-tight">
+              Estoque com visual renovado e operações mais claras.
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Controle entradas, saídas e catálogo de produtos em um painel rápido e consistente.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-2xl border bg-white/70 backdrop-blur-md p-4 shadow-lg shadow-primary/10">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">Acesso seguro</p>
+                    <p className="text-sm text-muted-foreground">Sessões persistentes</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border bg-white/70 backdrop-blur-md p-4 shadow-lg shadow-accent/10">
+                <div className="flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-accent-foreground" />
+                  <div>
+                    <p className="font-semibold">Operação ágil</p>
+                    <p className="text-sm text-muted-foreground">Fluxos de estoque simplificados</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <CardTitle className="text-2xl">Estoque Pro</CardTitle>
-          <CardDescription>Sistema de Gestão de Estoque</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Cadastro</TabsTrigger>
-            </TabsList>
 
-            <TabsContent value="login">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-login">Email</Label>
-                  <Input
-                    id="email-login"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+          <div className="w-full max-w-lg ml-auto space-y-4">
+            <Card className="shadow-2xl shadow-primary/10 border-primary/10">
+              <CardHeader className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30">
+                    <Package className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-2xl">Entrar</CardTitle>
+                    <CardDescription>Acesse o Market Manager</CardDescription>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-login">Senha</Label>
-                  <Input
-                    id="password-login"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
-            </TabsContent>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignIn} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Usuário</Label>
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="admin ou gestor"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Senha</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Entrando..." : "Acessar painel"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
 
-            <TabsContent value="register">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="João Silva"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
+            {/* Credenciais de teste */}
+            <Alert className="bg-white/70 backdrop-blur-md border-primary/20">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                <strong>Usuários de Teste:</strong>
+                <div className="mt-2 space-y-1 font-mono text-xs">
+                  <div>👤 admin / teste123 (Administrador)</div>
+                  <div>👤 gestor / teste123 (Gestor)</div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email-register">Email</Label>
-                  <Input
-                    id="email-register"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password-register">Senha</Label>
-                  <Input
-                    id="password-register"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Cadastrando..." : "Cadastrar"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
