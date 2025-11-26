@@ -18,6 +18,7 @@ class QueryBuilder {
   private selectColumns: string = '*';
   private orderColumn: string | null = null;
   private orderDirection: 'asc' | 'desc' = 'asc';
+  private isSingle: boolean = false;
 
   constructor(table: string) {
     this.table = table;
@@ -60,9 +61,12 @@ class QueryBuilder {
     return this;
   }
 
-  async then<TResult>(
-    onfulfilled?: ((value: QueryResult) => TResult | PromiseLike<TResult>) | null
-  ): Promise<TResult> {
+  single() {
+    this.isSingle = true;
+    return this;
+  }
+
+  private async execute(): Promise<QueryResult> {
     try {
       const url = `${API_URL}/${this.table}?${this.params.toString()}`;
       const response = await fetch(url);
@@ -70,22 +74,32 @@ class QueryBuilder {
 
       // Se o servidor retornou erro, tratar como erro
       if (data && data.error) {
-        const result: QueryResult = { data: [], error: new Error(data.error), count: 0 };
-        return onfulfilled ? onfulfilled(result) : result as any;
+        return { data: null, error: new Error(data.error), count: 0 };
+      }
+
+      // Se single(), retorna o primeiro item ou null
+      if (this.isSingle) {
+        const item = Array.isArray(data) ? data[0] : data;
+        return { data: item || null, error: null, count: item ? 1 : 0 };
       }
 
       // Garantir que data seja sempre um array para queries
       const resultData = Array.isArray(data) ? data : (data ? [data] : []);
-      const result: QueryResult = {
+      return {
         data: resultData,
         error: null,
         count: resultData.length
       };
-      return onfulfilled ? onfulfilled(result) : result as any;
     } catch (error) {
-      const result: QueryResult = { data: [], error: error as Error, count: 0 };
-      return onfulfilled ? onfulfilled(result) : result as any;
+      return { data: this.isSingle ? null : [], error: error as Error, count: 0 };
     }
+  }
+
+  async then<TResult>(
+    onfulfilled?: ((value: QueryResult) => TResult | PromiseLike<TResult>) | null
+  ): Promise<TResult> {
+    const result = await this.execute();
+    return onfulfilled ? onfulfilled(result) : result as any;
   }
 }
 
