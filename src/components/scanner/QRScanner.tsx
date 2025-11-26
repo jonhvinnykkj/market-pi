@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,14 +14,37 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const qrCodeRegionId = "qr-reader";
+  const isMountedRef = useRef(true);
+
+  const stopScanning = useCallback(async () => {
+    if (scannerRef.current) {
+      try {
+        const state = scannerRef.current.getState();
+        if (state === 2) { // SCANNING state
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+      } catch (error) {
+        // Ignorar erros ao parar
+        console.log("Stop scanner error (ignorado):", error);
+      } finally {
+        scannerRef.current = null;
+        if (isMountedRef.current) {
+          setIsScanning(false);
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      // Limpar scanner ao desmontar componente
+      isMountedRef.current = false;
       stopScanning();
     };
-  }, []);
+  }, [stopScanning]);
 
   const startScanning = async () => {
     setIsLoading(true);
@@ -85,17 +108,9 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
     }
   };
 
-  const stopScanning = async () => {
-    if (scannerRef.current && isScanning) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-        setIsScanning(false);
-        toast.info("Scanner desativado");
-      } catch (error) {
-        console.error("Erro ao parar scanner:", error);
-      }
-    }
+  const handleStopScanning = async () => {
+    await stopScanning();
+    toast.info("Scanner desativado");
   };
 
   return (
@@ -150,7 +165,7 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
           </Button>
         ) : (
           <Button
-            onClick={stopScanning}
+            onClick={handleStopScanning}
             variant="destructive"
             size="lg"
             className="w-full max-w-xs"
