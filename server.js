@@ -102,7 +102,60 @@ function parseSupabaseSelect(selectStr, table) {
   return { mainColumns, relations };
 }
 
-// API Routes
+// Servir arquivos de upload
+app.use('/uploads', express.static(uploadsDir));
+
+// Upload de imagens (base64) - DEVE vir antes das rotas genéricas
+app.post('/api/upload', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    const { file, filename } = req.body;
+
+    if (!file || !filename) {
+      return res.status(400).json({ error: 'File and filename required' });
+    }
+
+    // Decodificar base64
+    const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Gerar nome único
+    const ext = path.extname(filename) || '.jpg';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const filePath = path.join(uploadsDir, uniqueName);
+
+    // Salvar arquivo
+    fs.writeFileSync(filePath, buffer);
+
+    // Retornar URL pública
+    const publicUrl = `/uploads/${uniqueName}`;
+    res.json({ url: publicUrl });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// Auth routes - DEVE vir antes das rotas genéricas
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM profiles WHERE username = $1 AND password_hash = $2',
+      [username, password]
+    );
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+    const user = result.rows[0];
+    const session = { access_token: `token_${Date.now()}`, user_id: user.id };
+    res.json({ session, user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// Generic API Routes (tables)
 app.get('/api/:table', async (req, res) => {
   const { table } = req.params;
   try {
@@ -234,59 +287,6 @@ app.delete('/api/:table', async (req, res) => {
     const q = `DELETE FROM ${table} WHERE ${where.join(' AND ')} RETURNING *`;
     const r = await pool.query(q, params);
     res.json(r.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-// Servir arquivos de upload
-app.use('/uploads', express.static(uploadsDir));
-
-// Upload de imagens (base64)
-app.post('/api/upload', async (req, res) => {
-  try {
-    const { file, filename } = req.body;
-
-    if (!file || !filename) {
-      return res.status(400).json({ error: 'File and filename required' });
-    }
-
-    // Decodificar base64
-    const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    // Gerar nome único
-    const ext = path.extname(filename) || '.jpg';
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
-    const filePath = path.join(uploadsDir, uniqueName);
-
-    // Salvar arquivo
-    fs.writeFileSync(filePath, buffer);
-
-    // Retornar URL pública
-    const publicUrl = `/uploads/${uniqueName}`;
-    res.json({ url: publicUrl });
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: String(error) });
-  }
-});
-
-// Auth routes
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const result = await pool.query(
-      'SELECT * FROM profiles WHERE username = $1 AND password_hash = $2',
-      [username, password]
-    );
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-    const user = result.rows[0];
-    const session = { access_token: `token_${Date.now()}`, user_id: user.id };
-    res.json({ session, user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: String(error) });
