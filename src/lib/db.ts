@@ -97,18 +97,44 @@ export const db = {
       return builder.select(columns, options);
     },
 
-    insert: async (values: any) => {
-      try {
-        const response = await fetch(`${API_URL}/${table}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values),
-        });
-        const data = await response.json();
-        return { data, error: null };
-      } catch (error) {
-        return { data: null, error: error as Error };
-      }
+    insert: (values: any) => {
+      const doInsert = async () => {
+        try {
+          const response = await fetch(`${API_URL}/${table}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(values),
+          });
+          const data = await response.json();
+          if (data && data.error) {
+            return { data: null, error: new Error(data.error) };
+          }
+          return { data, error: null };
+        } catch (error) {
+          return { data: null, error: error as Error };
+        }
+      };
+
+      return {
+        select: (_columns?: string) => ({
+          single: async () => {
+            const result = await doInsert();
+            return result;
+          },
+          then: async (resolve: any) => {
+            const result = await doInsert();
+            return resolve ? resolve(result) : result;
+          },
+        }),
+        single: async () => {
+          const result = await doInsert();
+          return result;
+        },
+        then: async (resolve: any) => {
+          const result = await doInsert();
+          return resolve ? resolve(result) : result;
+        },
+      };
     },
 
     update: (values: any) => ({
