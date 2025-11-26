@@ -36,11 +36,72 @@ const parseFilter = (raw) => {
   return { op: 'eq', value: raw };
 };
 
+// Mapeamento de relacionamentos (foreign keys)
+const relationships = {
+  products: {
+    categories: { foreignKey: 'category_id', targetTable: 'categories' },
+    suppliers: { foreignKey: 'supplier_id', targetTable: 'suppliers' },
+  },
+  stock_movements: {
+    products: { foreignKey: 'product_id', targetTable: 'products' },
+    profiles: { foreignKey: 'user_id', targetTable: 'profiles' },
+  },
+  audit_logs: {
+    profiles: { foreignKey: 'user_id', targetTable: 'profiles' },
+  },
+};
+
+// Parser para o select do Supabase (ex: "*, categories (id, name)")
+function parseSupabaseSelect(selectStr, table) {
+  const relations = [];
+  const mainColumns = [];
+
+  // Remove whitespace excessivo
+  const cleaned = selectStr.replace(/\s+/g, ' ').trim();
+
+  // Regex para encontrar relações: nome_tabela (colunas)
+  const relationRegex = /(\w+)\s*\(([^)]+)\)/g;
+  let match;
+  let lastIndex = 0;
+  let tempStr = cleaned;
+
+  while ((match = relationRegex.exec(cleaned)) !== null) {
+    const relationName = match[1];
+    const relationColumns = match[2].split(',').map(c => c.trim());
+
+    if (relationships[table] && relationships[table][relationName]) {
+      relations.push({
+        name: relationName,
+        columns: relationColumns,
+        ...relationships[table][relationName],
+      });
+    }
+
+    // Remove a relação da string para pegar as colunas principais
+    tempStr = tempStr.replace(match[0], '');
+  }
+
+  // Pega as colunas principais (o que sobrou)
+  const mainColsStr = tempStr.replace(/,\s*,/g, ',').replace(/^,|,$/g, '').trim();
+  if (mainColsStr) {
+    mainColsStr.split(',').forEach(col => {
+      const trimmed = col.trim();
+      if (trimmed && trimmed !== '') {
+        mainColumns.push(trimmed);
+      }
+    });
+  }
+
+  return { mainColumns, relations };
+}
+
 // API Routes
 app.get('/api/:table', async (req, res) => {
   const { table } = req.params;
   try {
-    const select = req.query.select || '*';
+    const selectRaw = req.query.select || '*';
+    const { mainColumns, relations } = parseSupabaseSelect(selectRaw, table);
+
     const params = [];
     let idx = 1;
     const where = [];
@@ -49,30 +110,43 @@ app.get('/api/:table', async (req, res) => {
     for (const key of Object.keys(req.query)) {
       if (key === 'select' || key === 'count') continue;
       if (key === 'order') {
-        // Parse order like "column.asc" or "column.desc"
         const orderParts = req.query[key].split('.');
         const orderCol = orderParts[0];
         const orderDir = orderParts[1] === 'desc' ? 'DESC' : 'ASC';
-        orderClause = ` ORDER BY ${orderCol} ${orderDir}`;
+        orderClause = ` ORDER BY ${table}.${orderCol} ${orderDir}`;
         continue;
       }
       const { op, value } = parseFilter(req.query[key]);
       if (op === 'eq') {
-        where.push(`${key} = $${idx++}`);
+        where.push(`${table}.${key} = $${idx++}`);
         params.push(value);
       } else if (op === 'neq') {
-        where.push(`${key} != $${idx++}`);
+        where.push(`${table}.${key} != $${idx++}`);
         params.push(value);
       } else if (op === 'lte') {
-        where.push(`${key} <= $${idx++}`);
+        where.push(`${table}.${key} <= $${idx++}`);
         params.push(value);
       } else if (op === 'gte') {
-        where.push(`${key} >= $${idx++}`);
+        where.push(`${table}.${key} >= $${idx++}`);
         params.push(value);
       }
     }
 
-    const q = `SELECT ${select} FROM ${table}${where.length ? ' WHERE ' + where.join(' AND ') : ''}${orderClause}`;
+    // Construir SELECT com as colunas principais
+    let selectClause = mainColumns.length > 0
+      ? mainColumns.map(c => c === '*' ? `${table}.*` : `${table}.${c}`).join(', ')
+      : `${table}.*`;
+
+    // Adicionar colunas das relações como JSON
+    const joins = [];
+    relations.forEach(rel => {
+      const relCols = rel.columns.map(c => `'${c}', ${rel.targetTable}.${c}`).join(', ');
+      selectClause += `, json_build_object(${relCols}) as ${rel.name}`;
+      joins.push(`LEFT JOIN ${rel.targetTable} ON ${table}.${rel.foreignKey} = ${rel.targetTable}.id`);
+    });
+
+    const q = `SELECT ${selectClause} FROM ${table} ${joins.join(' ')}${where.length ? ' WHERE ' + where.join(' AND ') : ''}${orderClause}`;
+
     const result = await pool.query(q, params);
     res.json(result.rows);
   } catch (error) {
@@ -164,7 +238,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const result = await pool.query(
-      'SELECT * FROM users WHERE username = $1 AND password = $2',
+      'SELECT * FROM profiles WHERE username = $1 AND password_hash = $2',
       [username, password]
     );
     if (result.rows.length === 0) {
