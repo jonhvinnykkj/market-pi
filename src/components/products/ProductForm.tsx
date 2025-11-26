@@ -22,8 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { QRCodeDisplay } from "@/components/shared/QRCodeDisplay";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle } from "lucide-react";
 
 interface ProductFormProps {
   initialData?: Partial<ProductFormData> & { id?: string; qr_code?: string };
@@ -49,6 +58,8 @@ export function ProductForm({
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [createdProduct, setCreatedProduct] = useState<{ id: string; name: string; qr_code: string } | null>(null);
   const isEditing = !!initialData?.id;
 
   const form = useForm<ProductFormData>({
@@ -172,8 +183,14 @@ export function ProductForm({
 
         if (error) throw error;
 
+        // Mostrar modal com QR Code
+        setCreatedProduct({
+          id: newProduct.id,
+          name: data.name,
+          qr_code: qrCode!,
+        });
+        setShowQRCodeModal(true);
         toast.success("Produto criado com sucesso!");
-        onSuccess?.(newProduct.id);
       }
     } catch (error) {
       console.error("Erro ao salvar produto:", error);
@@ -518,6 +535,55 @@ export function ProductForm({
           </Button>
         </div>
       </form>
+
+      {/* Modal de QR Code após criação */}
+      <Dialog open={showQRCodeModal} onOpenChange={setShowQRCodeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              Produto Criado com Sucesso!
+            </DialogTitle>
+            <DialogDescription>
+              O QR Code do produto foi gerado automaticamente. Você pode imprimir ou baixar agora.
+            </DialogDescription>
+          </DialogHeader>
+
+          {createdProduct && (
+            <div className="py-4">
+              <QRCodeDisplay
+                value={createdProduct.qr_code}
+                title={createdProduct.name}
+                size={200}
+                showActions={true}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2 sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowQRCodeModal(false);
+                if (createdProduct) {
+                  onSuccess?.(createdProduct.id);
+                }
+              }}
+            >
+              Ver Detalhes do Produto
+            </Button>
+            <Button
+              onClick={() => {
+                setShowQRCodeModal(false);
+                form.reset();
+                setCreatedProduct(null);
+              }}
+            >
+              Criar Outro Produto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }
