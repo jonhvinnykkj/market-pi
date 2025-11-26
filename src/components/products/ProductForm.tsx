@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormData } from "@/lib/validations";
-import { uploadFile } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ImageUpload } from "@/components/shared/ImageUpload";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -50,7 +48,6 @@ export function ProductForm({
 }: ProductFormProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!initialData?.id;
 
@@ -114,20 +111,6 @@ export function ProductForm({
     setIsSubmitting(true);
 
     try {
-      let imageUrl = data.image_url;
-
-      // Upload da imagem se houver arquivo novo
-      if (imageFile) {
-        const uploadedUrl = await uploadFile(imageFile);
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl;
-        } else {
-          toast.error("Erro ao fazer upload da imagem");
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       // Gerar QR Code único (se criando novo produto)
       const qrCode = isEditing
         ? initialData?.id
@@ -156,7 +139,7 @@ export function ProductForm({
 
       const productData = {
         ...data,
-        image_url: imageUrl,
+        image_url: data.image_url || null,
         qr_code: qrCode,
         barcode: barcode,
         // Converter campos vazios para null
@@ -207,26 +190,6 @@ export function ProductForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Imagem do Produto */}
-        <FormField
-          control={form.control}
-          name="image_url"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Imagem do Produto</FormLabel>
-              <FormControl>
-                <ImageUpload
-                  value={field.value}
-                  onChange={field.onChange}
-                  onFileSelect={setImageFile}
-                  disabled={isSubmitting}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Nome */}
           <FormField
