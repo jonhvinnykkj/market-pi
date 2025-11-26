@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -9,6 +10,12 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Criar pasta de uploads se não existir
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -229,6 +236,39 @@ app.delete('/api/:table', async (req, res) => {
     res.json(r.rows);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: String(error) });
+  }
+});
+
+// Servir arquivos de upload
+app.use('/uploads', express.static(uploadsDir));
+
+// Upload de imagens (base64)
+app.post('/api/upload', async (req, res) => {
+  try {
+    const { file, filename } = req.body;
+
+    if (!file || !filename) {
+      return res.status(400).json({ error: 'File and filename required' });
+    }
+
+    // Decodificar base64
+    const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    // Gerar nome único
+    const ext = path.extname(filename) || '.jpg';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+    const filePath = path.join(uploadsDir, uniqueName);
+
+    // Salvar arquivo
+    fs.writeFileSync(filePath, buffer);
+
+    // Retornar URL pública
+    const publicUrl = `/uploads/${uniqueName}`;
+    res.json({ url: publicUrl });
+  } catch (error) {
+    console.error('Upload error:', error);
     res.status(500).json({ error: String(error) });
   }
 });

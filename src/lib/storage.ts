@@ -1,40 +1,33 @@
-import { supabase } from "@/integrations/supabase/client";
-
 /**
- * Upload de arquivo para o Supabase Storage
+ * Upload de arquivo para o servidor
  * @param file - Arquivo a ser enviado
- * @param bucket - Nome do bucket (padrão: 'product-images')
- * @param path - Caminho dentro do bucket (ex: 'products/abc-123.jpg')
  * @returns URL pública do arquivo ou null em caso de erro
  */
 export async function uploadFile(
   file: File,
-  bucket: string = "product-images",
-  path?: string
+  _bucket: string = "product-images",
+  _path?: string
 ): Promise<string | null> {
   try {
-    // Gerar nome único se não fornecido
-    const fileName = path || `products/${Date.now()}-${file.name}`;
+    // Converter arquivo para base64
+    const base64 = await fileToBase64(file);
 
-    // Upload do arquivo
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file: base64,
+        filename: file.name,
+      }),
+    });
 
-    if (error) {
-      console.error("Erro ao fazer upload:", error);
+    if (!response.ok) {
+      console.error("Erro ao fazer upload:", await response.text());
       return null;
     }
 
-    // Obter URL pública
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(bucket).getPublicUrl(data.path);
-
-    return publicUrl;
+    const data = await response.json();
+    return data.url;
   } catch (error) {
     console.error("Erro inesperado no upload:", error);
     return null;
@@ -42,75 +35,45 @@ export async function uploadFile(
 }
 
 /**
- * Atualizar arquivo existente
- * @param file - Novo arquivo
- * @param bucket - Nome do bucket
- * @param path - Caminho do arquivo existente
- * @returns URL pública ou null
+ * Converter File para base64
+ */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+}
+
+/**
+ * Atualizar arquivo existente (usa mesmo método de upload)
  */
 export async function updateFile(
   file: File,
   bucket: string = "product-images",
-  path: string
+  _path: string
 ): Promise<string | null> {
-  try {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .update(path, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
-
-    if (error) {
-      console.error("Erro ao atualizar arquivo:", error);
-      return null;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(bucket).getPublicUrl(data.path);
-
-    return publicUrl;
-  } catch (error) {
-    console.error("Erro inesperado na atualização:", error);
-    return null;
-  }
+  return uploadFile(file, bucket);
 }
 
 /**
- * Deletar arquivo do Storage
- * @param bucket - Nome do bucket
- * @param path - Caminho do arquivo
- * @returns true se sucesso, false se erro
+ * Deletar arquivo do Storage (não implementado no servidor simples)
  */
 export async function deleteFile(
-  bucket: string = "product-images",
-  path: string
+  _bucket: string = "product-images",
+  _path: string
 ): Promise<boolean> {
-  try {
-    const { error } = await supabase.storage.from(bucket).remove([path]);
-
-    if (error) {
-      console.error("Erro ao deletar arquivo:", error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Erro inesperado ao deletar:", error);
-    return false;
-  }
+  // TODO: implementar delete no servidor se necessário
+  return true;
 }
 
 /**
- * Extrair path do arquivo a partir da URL pública
- * @param url - URL pública do Supabase Storage
- * @returns Path do arquivo ou null
+ * Extrair path do arquivo a partir da URL
  */
 export function extractPathFromUrl(url: string): string | null {
   try {
-    // URL formato: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
-    const matches = url.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+    const matches = url.match(/\/uploads\/(.+)$/);
     return matches ? matches[1] : null;
   } catch (error) {
     console.error("Erro ao extrair path da URL:", error);
@@ -120,8 +83,6 @@ export function extractPathFromUrl(url: string): string | null {
 
 /**
  * Validar tipo de arquivo de imagem
- * @param file - Arquivo a validar
- * @returns true se for imagem válida
  */
 export function isValidImageFile(file: File): boolean {
   const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -130,9 +91,6 @@ export function isValidImageFile(file: File): boolean {
 
 /**
  * Validar tamanho do arquivo (padrão: 5MB)
- * @param file - Arquivo a validar
- * @param maxSizeMB - Tamanho máximo em MB
- * @returns true se tamanho válido
  */
 export function isValidFileSize(file: File, maxSizeMB: number = 5): boolean {
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
