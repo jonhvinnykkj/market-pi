@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 interface ProductFormProps {
-  initialData?: Partial<ProductFormData> & { id?: string };
+  initialData?: Partial<ProductFormData> & { id?: string; qr_code?: string };
   onSuccess?: (productId: string) => void;
   onCancel?: () => void;
 }
@@ -113,7 +113,7 @@ export function ProductForm({
     try {
       // Gerar QR Code único (se criando novo produto)
       const qrCode = isEditing
-        ? initialData?.id
+        ? initialData?.qr_code
         : crypto.randomUUID();
 
       // Gerar código de barras EAN-13 automaticamente (se criando novo produto)
