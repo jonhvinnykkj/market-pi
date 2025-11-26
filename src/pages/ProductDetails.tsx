@@ -308,13 +308,13 @@ export default function ProductDetails() {
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Preço de Custo</p>
                   <p className="text-xl font-bold">
-                    R$ {product.cost_price.toFixed(2)}
+                    R$ {Number(product.cost_price).toFixed(2)}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Preço de Venda</p>
                   <p className="text-xl font-bold text-success">
-                    R$ {product.sale_price.toFixed(2)}
+                    R$ {Number(product.sale_price).toFixed(2)}
                   </p>
                 </div>
                 <div className="space-y-1">

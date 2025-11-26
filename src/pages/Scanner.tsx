@@ -264,7 +264,7 @@ export default function Scanner() {
                         Preço de Venda
                       </p>
                       <p className="text-xl font-bold text-green-600">
-                        R$ {scannedProduct.sale_price.toFixed(2)}
+                        R$ {Number(scannedProduct.sale_price).toFixed(2)}
                       </p>
                     </div>
                   </div>

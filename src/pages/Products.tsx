@@ -325,7 +325,7 @@ export default function Products() {
                 <div className="flex justify-between items-center pt-2 border-t">
                   <span className="text-sm">Estoque: {product.current_stock}</span>
                   <span className="font-semibold text-lg text-primary">
-                    R$ {product.sale_price.toFixed(2)}
+                    R$ {Number(product.sale_price).toFixed(2)}
                   </span>
                 </div>
 

@@ -164,7 +164,7 @@ export function BulkQRPrint({ products }: BulkQRPrintProps) {
                     ? `<div class="label-info">CÓD: ${product.barcode}</div>`
                     : ""
                 }
-                <div class="label-price">R$ ${product.sale_price.toFixed(
+                <div class="label-price">R$ ${Number(product.sale_price).toFixed(
                   2
                 )}</div>
                 <div class="label-code">${product.qr_code}</div>
@@ -294,7 +294,7 @@ export function BulkQRPrint({ products }: BulkQRPrintProps) {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      R$ {product.sale_price.toFixed(2)}
+                      R$ {Number(product.sale_price).toFixed(2)}
                     </p>
                   </div>
                   <div className="bg-white p-2 rounded border">
