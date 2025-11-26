@@ -166,6 +166,7 @@ app.get('/api/:table', async (req, res) => {
     let idx = 1;
     const where = [];
     let orderClause = '';
+    let limitClause = '';
 
     for (const key of Object.keys(req.query)) {
       if (key === 'select' || key === 'count') continue;
@@ -174,6 +175,10 @@ app.get('/api/:table', async (req, res) => {
         const orderCol = orderParts[0];
         const orderDir = orderParts[1] === 'desc' ? 'DESC' : 'ASC';
         orderClause = ` ORDER BY ${table}.${orderCol} ${orderDir}`;
+        continue;
+      }
+      if (key === 'limit') {
+        limitClause = ` LIMIT ${parseInt(req.query[key])}`;
         continue;
       }
       const { op, value } = parseFilter(req.query[key]);
@@ -189,6 +194,31 @@ app.get('/api/:table', async (req, res) => {
       } else if (op === 'gte') {
         where.push(`${table}.${key} >= $${idx++}`);
         params.push(value);
+      } else if (op === 'gt') {
+        where.push(`${table}.${key} > $${idx++}`);
+        params.push(value);
+      } else if (op === 'lt') {
+        where.push(`${table}.${key} < $${idx++}`);
+        params.push(value);
+      } else if (op === 'is') {
+        if (value === 'null') {
+          where.push(`${table}.${key} IS NULL`);
+        } else {
+          where.push(`${table}.${key} IS NOT NULL`);
+        }
+      } else if (op === 'not') {
+        // Handle not.eq.value format
+        const notParts = value.split('.');
+        if (notParts.length >= 2) {
+          const notOp = notParts[0];
+          const notValue = notParts.slice(1).join('.');
+          if (notOp === 'eq') {
+            where.push(`${table}.${key} != $${idx++}`);
+            params.push(notValue);
+          } else if (notOp === 'is' && notValue === 'null') {
+            where.push(`${table}.${key} IS NOT NULL`);
+          }
+        }
       }
     }
 
@@ -205,7 +235,7 @@ app.get('/api/:table', async (req, res) => {
       joins.push(`LEFT JOIN ${rel.targetTable} ON ${table}.${rel.foreignKey} = ${rel.targetTable}.id`);
     });
 
-    const q = `SELECT ${selectClause} FROM ${table} ${joins.join(' ')}${where.length ? ' WHERE ' + where.join(' AND ') : ''}${orderClause}`;
+    const q = `SELECT ${selectClause} FROM ${table} ${joins.join(' ')}${where.length ? ' WHERE ' + where.join(' AND ') : ''}${orderClause}${limitClause}`;
 
     const result = await pool.query(q, params);
     res.json(result.rows);

@@ -61,6 +61,31 @@ class QueryBuilder {
     return this;
   }
 
+  gt(column: string, value: any) {
+    this.params.set(column, `gt.${value}`);
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.params.set(column, `lt.${value}`);
+    return this;
+  }
+
+  not(column: string, operator: string, value: any) {
+    this.params.set(column, `not.${operator}.${value}`);
+    return this;
+  }
+
+  is(column: string, value: any) {
+    this.params.set(column, `is.${value}`);
+    return this;
+  }
+
+  limit(count: number) {
+    this.params.set('limit', count.toString());
+    return this;
+  }
+
   single() {
     this.isSingle = true;
     return this;
