@@ -205,6 +205,7 @@ export function ProductForm({
   };
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -535,55 +536,56 @@ export function ProductForm({
           </Button>
         </div>
       </form>
-
-      {/* Modal de QR Code após criação */}
-      <Dialog open={showQRCodeModal} onOpenChange={setShowQRCodeModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              Produto Criado com Sucesso!
-            </DialogTitle>
-            <DialogDescription>
-              O QR Code do produto foi gerado automaticamente. Você pode imprimir ou baixar agora.
-            </DialogDescription>
-          </DialogHeader>
-
-          {createdProduct && (
-            <div className="py-4">
-              <QRCodeDisplay
-                value={createdProduct.qr_code}
-                title={createdProduct.name}
-                size={200}
-                showActions={true}
-              />
-            </div>
-          )}
-
-          <DialogFooter className="flex gap-2 sm:justify-between">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowQRCodeModal(false);
-                if (createdProduct) {
-                  onSuccess?.(createdProduct.id);
-                }
-              }}
-            >
-              Ver Detalhes do Produto
-            </Button>
-            <Button
-              onClick={() => {
-                setShowQRCodeModal(false);
-                form.reset();
-                setCreatedProduct(null);
-              }}
-            >
-              Criar Outro Produto
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Form>
+
+    {/* Modal de QR Code após criação - fora do Form */}
+    <Dialog open={showQRCodeModal} onOpenChange={setShowQRCodeModal}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-500" />
+            Produto Criado com Sucesso!
+          </DialogTitle>
+          <DialogDescription>
+            O QR Code do produto foi gerado automaticamente. Você pode imprimir ou baixar agora.
+          </DialogDescription>
+        </DialogHeader>
+
+        {createdProduct && (
+          <div className="py-4">
+            <QRCodeDisplay
+              value={createdProduct.qr_code}
+              title={createdProduct.name}
+              size={200}
+              showActions={true}
+            />
+          </div>
+        )}
+
+        <DialogFooter className="flex gap-2 sm:justify-between">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowQRCodeModal(false);
+              if (createdProduct) {
+                onSuccess?.(createdProduct.id);
+              }
+            }}
+          >
+            Ver Detalhes do Produto
+          </Button>
+          <Button
+            onClick={() => {
+              setShowQRCodeModal(false);
+              form.reset();
+              setCreatedProduct(null);
+            }}
+          >
+            Criar Outro Produto
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
