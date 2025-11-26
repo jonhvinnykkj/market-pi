@@ -67,14 +67,23 @@ class QueryBuilder {
       const url = `${API_URL}/${this.table}?${this.params.toString()}`;
       const response = await fetch(url);
       const data = await response.json();
+
+      // Se o servidor retornou erro, tratar como erro
+      if (data && data.error) {
+        const result: QueryResult = { data: [], error: new Error(data.error), count: 0 };
+        return onfulfilled ? onfulfilled(result) : result as any;
+      }
+
+      // Garantir que data seja sempre um array para queries
+      const resultData = Array.isArray(data) ? data : (data ? [data] : []);
       const result: QueryResult = {
-        data,
+        data: resultData,
         error: null,
-        count: Array.isArray(data) ? data.length : undefined
+        count: resultData.length
       };
       return onfulfilled ? onfulfilled(result) : result as any;
     } catch (error) {
-      const result: QueryResult = { data: null, error: error as Error, count: 0 };
+      const result: QueryResult = { data: [], error: error as Error, count: 0 };
       return onfulfilled ? onfulfilled(result) : result as any;
     }
   }
