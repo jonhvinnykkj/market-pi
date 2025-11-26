@@ -44,9 +44,18 @@ app.get('/api/:table', async (req, res) => {
     const params = [];
     let idx = 1;
     const where = [];
+    let orderClause = '';
 
     for (const key of Object.keys(req.query)) {
-      if (key === 'select') continue;
+      if (key === 'select' || key === 'count') continue;
+      if (key === 'order') {
+        // Parse order like "column.asc" or "column.desc"
+        const orderParts = req.query[key].split('.');
+        const orderCol = orderParts[0];
+        const orderDir = orderParts[1] === 'desc' ? 'DESC' : 'ASC';
+        orderClause = ` ORDER BY ${orderCol} ${orderDir}`;
+        continue;
+      }
       const { op, value } = parseFilter(req.query[key]);
       if (op === 'eq') {
         where.push(`${key} = $${idx++}`);
@@ -63,7 +72,7 @@ app.get('/api/:table', async (req, res) => {
       }
     }
 
-    const q = `SELECT ${select} FROM ${table}${where.length ? ' WHERE ' + where.join(' AND ') : ''}`;
+    const q = `SELECT ${select} FROM ${table}${where.length ? ' WHERE ' + where.join(' AND ') : ''}${orderClause}`;
     const result = await pool.query(q, params);
     res.json(result.rows);
   } catch (error) {
