@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,46 +14,50 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const qrCodeRegionId = "qr-reader";
-  const isMountedRef = useRef(true);
-
-  const stopScanning = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        const state = scannerRef.current.getState();
-        if (state === 2) { // SCANNING state
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
-      } catch (error) {
-        // Ignorar erros ao parar
-        console.log("Stop scanner error (ignorado):", error);
-      } finally {
-        scannerRef.current = null;
-        if (isMountedRef.current) {
-          setIsScanning(false);
-        }
-      }
-    }
-  }, []);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const qrCodeRegionId = `qr-reader-${useId().replace(/:/g, "")}`;
 
   useEffect(() => {
-    isMountedRef.current = true;
     return () => {
-      isMountedRef.current = false;
+      // Limpar scanner ao desmontar componente
       stopScanning();
     };
-  }, [stopScanning]);
+  }, []);
+
+  const stopAndClear = async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+    try {
+      if (isScanning) {
+        await scanner.stop();
+      }
+    } catch (error) {
+      console.error("Erro ao parar scanner:", error);
+    }
+
+    try {
+      await scanner.clear?.();
+    } catch (error) {
+      console.error("Erro ao limpar scanner:", error);
+    }
+
+    scannerRef.current = null;
+  };
 
   const startScanning = async () => {
     setIsLoading(true);
 
     try {
-      // Criar instância do scanner
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(qrCodeRegionId);
+      if (!containerRef.current) {
+        throw new Error("Container do scanner não encontrado");
       }
+
+      // Sempre recriar instância para evitar nós órfãos no DOM
+      await stopAndClear();
+
+      // Criar instância do scanner
+      // Use sempre o id do container (Html5Qrcode espera um id string)
+      scannerRef.current = new Html5Qrcode(qrCodeRegionId);
 
       const scanner = scannerRef.current;
 
@@ -108,23 +112,27 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
     }
   };
 
-  const handleStopScanning = async () => {
-    await stopScanning();
+  const stopScanning = async () => {
+    await stopAndClear();
+    setIsScanning(false);
     toast.info("Scanner desativado");
   };
 
   return (
     <Card className="p-6 space-y-4">
       {/* Área de Scanner */}
-      <div
-        id={qrCodeRegionId}
-        className={`
-          w-full aspect-square max-w-md mx-auto rounded-lg overflow-hidden
-          ${!isScanning ? "bg-muted border-2 border-dashed border-muted-foreground/25" : ""}
-        `}
-      >
+      <div className="relative w-full aspect-square max-w-md mx-auto">
+        <div
+          id={qrCodeRegionId}
+          ref={containerRef}
+          className={`
+            w-full h-full rounded-lg overflow-hidden
+            ${!isScanning ? "bg-muted border-2 border-dashed border-muted-foreground/25" : ""}
+          `}
+        />
+
         {!isScanning && !isLoading && (
-          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground p-8 text-center pointer-events-none">
             <Camera className="h-16 w-16 mb-4 opacity-50" />
             <p className="text-lg font-medium mb-2">Scanner Inativo</p>
             <p className="text-sm">
@@ -132,8 +140,9 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
             </p>
           </div>
         )}
+
         {isLoading && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 backdrop-blur-sm">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="mt-4 text-sm text-muted-foreground">
               Iniciando câmera...
@@ -165,7 +174,7 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
           </Button>
         ) : (
           <Button
-            onClick={handleStopScanning}
+            onClick={stopScanning}
             variant="destructive"
             size="lg"
             className="w-full max-w-xs"

@@ -66,19 +66,28 @@ export default function Movements() {
               Registre e acompanhe todas as movimentações
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
             <Button
               onClick={() => handleNewMovement("entrada")}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <ArrowDown className="mr-2 h-4 w-4" />
               Entrada
             </Button>
-            <Button onClick={() => handleNewMovement("saida")} variant="outline">
+            <Button
+              onClick={() => handleNewMovement("saida")}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
               <ArrowUp className="mr-2 h-4 w-4" />
               Saída
             </Button>
-            <Button onClick={() => handleNewMovement()} variant="default">
+            <Button
+              onClick={() => handleNewMovement()}
+              variant="default"
+              className="w-full sm:w-auto"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Nova Movimentação
             </Button>
@@ -137,7 +146,7 @@ export default function Movements() {
 
         {/* Dialog de Nova Movimentação */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova Movimentação</DialogTitle>
               <DialogDescription>

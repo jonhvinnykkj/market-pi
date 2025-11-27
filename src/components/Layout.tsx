@@ -19,7 +19,10 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex-1 flex flex-col relative">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_20%,hsla(var(--primary),0.08),transparent_25%),radial-gradient(circle_at_90%_10%,hsla(var(--accent),0.10),transparent_25%)] pointer-events-none" />
 
-          <header className="sticky top-0 z-20 border-b border-border/60 bg-white/80 backdrop-blur-xl">
+          <header
+            className="sticky top-0 z-20 border-b border-border/60 bg-white/80 backdrop-blur-xl"
+            style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+          >
             <div className="h-16 flex items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <MobileNav />
@@ -53,7 +56,10 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 sm:px-6 py-6 sm:py-8">
+          <main
+            className="flex-1 px-4 sm:px-6 pt-6 sm:pt-8 pb-6 sm:pb-8"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
+          >
             <div className="relative max-w-7xl mx-auto w-full space-y-6">
               <div className="absolute inset-x-0 -top-8 h-24 bg-gradient-to-r from-primary/10 via-accent/15 to-primary/10 blur-3xl rounded-full pointer-events-none" />
               <div className="relative">{children}</div>

@@ -54,7 +54,10 @@ export function MobileNav() {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[320px] bg-sidebar text-sidebar-foreground border-sidebar-border">
+      <SheetContent
+        side="left"
+        className="w-[90vw] max-w-sm bg-sidebar text-sidebar-foreground border-sidebar-border"
+      >
         <SheetHeader className="space-y-2">
           <SheetTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border border-sidebar-border/70">
